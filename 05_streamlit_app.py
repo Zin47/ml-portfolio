@@ -50,3 +50,19 @@ with tab2:
     st.subheader("Alle Maschinen")
     df = pd.read_sql("SELECT * FROM maschinen ORDER BY status", conn)
     st.dataframe(df)
+
+    st.subheader("Neue Maschine hinzufügen")
+    name = st.text_input("Name")
+    temp_db = st.number_input("Temperatur (°C)", 50.0, 120.0, 85.0)
+    druck_db = st.number_input("Druck (bar)", 1.0, 10.0, 5.0)
+    vibration_db = st.number_input("Vibration (mm/s)", 0.0, 5.0, 1.0)
+    status_db = st.selectbox("Status", ["NORMAL", "ERHÖHT", "KRITISCH"])
+
+    if st.button("Maschine hinzufügen"):
+        conn.execute(f"""
+                INSERT INTO maschinen (name, temperatur, druck, vibration, status)
+                VALUES ('{name}', {temp_db}, {druck_db}, {vibration_db}, '{status_db}')
+            """)
+        conn.commit()
+        st.success(f"{name} wurde hinzugefügt!")
+        st.rerun()
