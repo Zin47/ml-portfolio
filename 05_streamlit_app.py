@@ -12,7 +12,7 @@ conn = sqlite3.connect("maschinen.db")
 st.title("Maschinenbericht")
 
 # Tabs
-tab1, tab2 = st.tabs(["Vorhersage", "Datenbank"])
+tab1, tab2, tab3 = st.tabs(["Vorhersage", "Datenbank", "Forecast"])
 
 with tab1:
     st.subheader("Sensordaten eingeben")
@@ -66,3 +66,31 @@ with tab2:
         conn.commit()
         st.success(f"{name} wurde hinzugefügt!")
         st.rerun()
+with tab3:
+    st.subheader("Temperatur Forecast")
+
+    uploaded_file = st.file_uploader("CSV hochladen (Spalten: ds, y)", type="csv")
+
+    if uploaded_file is not None:
+        df_upload = pd.read_csv(uploaded_file)
+        df_upload["ds"] = pd.to_datetime(df_upload["ds"])
+
+        st.write("Daten geladen:")
+        st.dataframe(df_upload.head())
+
+        if st.button("Forecast erstellen"):
+            from prophet import Prophet
+
+            modell_ts = Prophet(daily_seasonality=False, yearly_seasonality=False)
+            modell_ts.fit(df_upload)
+
+            zukunft = modell_ts.make_future_dataframe(periods=14)
+            forecast = modell_ts.predict(zukunft)
+
+            import matplotlib.pyplot as plt
+
+            fig = modell_ts.plot(forecast)
+            plt.axhline(y=95, color="red", linestyle="--", label="Alarmgrenze 95°C")
+            plt.title("Temperatur Forecast — 14 Tage")
+            plt.legend()
+            st.pyplot(fig)
