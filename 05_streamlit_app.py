@@ -12,7 +12,7 @@ conn = sqlite3.connect("maschinen.db")
 st.title("Maschinenbericht")
 
 # Tabs
-tab1, tab2, tab3 = st.tabs(["Vorhersage", "Datenbank", "Forecast"])
+tab1, tab2, tab3, tab4 = st.tabs(["Vorhersage", "Datenbank", "Forecast", "Anomalien"])
 
 with tab1:
     st.subheader("Sensordaten eingeben")
@@ -94,3 +94,39 @@ with tab3:
             plt.title("Temperatur Forecast — 14 Tage")
             plt.legend()
             st.pyplot(fig)
+with tab4:
+    st.subheader("Anomaly Detection")
+
+    uploaded_anomalie = st.file_uploader("CSV hochladen (Spalten: temperatur, druck, vibration)", type="csv",
+                                         key="anomalie")
+
+    if uploaded_anomalie is not None:
+        df_anomalie = pd.read_csv(uploaded_anomalie)
+        st.write("Daten geladen:")
+        st.dataframe(df_anomalie.head())
+
+        contamination = st.slider("Empfindlichkeit (% Anomalien erwartet)", 0.01, 0.1, 0.02)
+
+        if st.button("Anomalien finden"):
+            from sklearn.ensemble import IsolationForest
+
+            modell_iso = IsolationForest(contamination=contamination, random_state=42)
+            df_anomalie["label"] = modell_iso.fit_predict(df_anomalie[["temperatur", "druck", "vibration"]])
+            df_anomalie["label"] = df_anomalie["label"].map({1: "Normal", -1: "Anomalie"})
+
+            anzahl = len(df_anomalie[df_anomalie["label"] == "Anomalie"])
+            st.warning(f"⚠️ {anzahl} Anomalien gefunden")
+
+            fig, ax = plt.subplots()
+            normal = df_anomalie[df_anomalie["label"] == "Normal"]
+            anomalie = df_anomalie[df_anomalie["label"] == "Anomalie"]
+            ax.scatter(normal["temperatur"], normal["vibration"], color="blue", alpha=0.4, s=20, label="Normal")
+            ax.scatter(anomalie["temperatur"], anomalie["vibration"], color="red", s=100, marker="x", linewidths=2,
+                       label="Anomalie")
+            ax.set_xlabel("Temperatur (°C)")
+            ax.set_ylabel("Vibration (mm/s)")
+            ax.legend()
+            st.pyplot(fig)
+
+            st.subheader("Anomale Maschinen")
+            st.dataframe(df_anomalie[df_anomalie["label"] == "Anomalie"])
